@@ -12,7 +12,10 @@ function App() {
         onClick={() => {
           send({
             type: "submit_task",
-            input: "some task to do",
+            input: `Handle these work items:
+- item-1 (customer_message): "I was charged twice and need help."
+- item-2 (bug_report): "The export button fails on Safari."
+- item-3 (sales_request): "Can you send pricing for 50 seats?"`,
             mode: "default",
           });
         }}
