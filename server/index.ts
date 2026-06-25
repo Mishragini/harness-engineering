@@ -1,39 +1,65 @@
 import express from "express"
 import { WebSocketServer } from "ws"
 import { createServer } from "http"
-import { runAgent } from "../harness/runtime"
-import { createEmitter, EventBus } from "./bus"
-import { EventType } from "@shared/event"
+import type { ClientMessage } from "@shared/event"
+import { DBOS } from "@dbos-inc/dbos-sdk"
+import { history, subscribe } from "../harness/bus"
+import { runAgentWorkflow } from "../harness/runtime"
 
-const app = express()
-const server = createServer(app)
-const wss = new WebSocketServer({ server, path: "/ws" })
+async function main() {
+    DBOS.setConfig({
+        "name": "harness",
+        "systemDatabaseUrl": process.env.DATABASE_URL,
+    });
+    await DBOS.launch();
 
-const bus = new EventBus()
 
-bus.subscribe((event) => {
-    const data = JSON.stringify(event)
-    wss.clients.forEach((client) => client.readyState === client.OPEN && client.send(data))
-})
+    const app = express()
+    app.get("/health", (_req, res) => {
+        res.json({ ok: true })
+    })
+    const server = createServer(app)
+    const wss = new WebSocketServer({ server, path: "/ws" })
 
-wss.on("connection", (ws) => {
-    ws.on("message", (data) => {
-        let message
-        try {
-            message = JSON.parse(data.toString())
-        } catch (error) {
-            return
-        }
-
-        if (message.type === "submit_task") {
-            const emit = createEmitter(bus)
-            runAgent({ input: message.input, emit }).catch((error) => {
-                emit({ type: EventType.Log, level: "error", message: String(error) })
-            })
+    subscribe((event) => {
+        const data = JSON.stringify(event)
+        for (const client of wss.clients) {
+            if (client.readyState === client.OPEN) client.send(data)
         }
     })
+
+    wss.on("connection", async (ws) => {
+        console.log("connected..")
+        ws.on("message", async (data) => {
+            let message: ClientMessage
+            try {
+                message = JSON.parse(data.toString())
+            } catch (error) {
+                return
+            }
+
+            if (message.type === "submit_task") {
+                await DBOS.startWorkflow(runAgentWorkflow)(message.input)
+
+            }
+        })
+        for (const event of await history()) ws.send(JSON.stringify(event))
+
+    })
+
+
+    server.listen(8787, () => {
+        console.log("Server is listening on port 8787")
+    })
+}
+
+main().catch((e) => {
+    console.error("error:", e)
+    process.exit(1)
 })
 
-server.listen(8787, () => {
-    console.log("Server is listening on port 8787")
-})
+
+
+
+
+

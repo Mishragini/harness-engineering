@@ -22,5 +22,12 @@
       "@shared/*": ["./shared/*"]
     }
   },
-  "include": ["vite.config.ts", "server", "shared", "harness"]
+  "include": [
+    "vite.config.ts",
+    "server",
+    "shared",
+    "harness",
+    "drizzle.config.ts",
+    "config"
+  ]
 }

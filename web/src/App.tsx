@@ -6,9 +6,10 @@ function App() {
   const { events, connected, send } = useHarnessSocket();
   return (
     <>
-      {connected}
+      <div>connected:{connected}</div>
       {JSON.stringify(events)}
       <Button
+        disabled={!connected}
         onClick={() => {
           send({
             type: "submit_task",

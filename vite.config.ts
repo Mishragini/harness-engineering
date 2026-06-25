@@ -14,7 +14,7 @@ function debugLog(hypothesisId: string, location: string, message: string, data:
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': SESSION_ID },
     body: JSON.stringify({ sessionId: SESSION_ID, hypothesisId, location, message, data, timestamp: Date.now(), runId: 'pre-fix' }),
-  }).catch(() => {})
+  }).catch(() => { })
   // #endregion
 }
 

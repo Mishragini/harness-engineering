@@ -16,13 +16,7 @@ export const tools = {
         description: "Search the support knowledge base for relevant articles.",
         inputSchema: z.object({
             query: z.string().describe("what to look up")
-        }),
-        execute: ({ query }) => {
-            const hits = Object.entries(KNOWLEDGE_BASE)
-                .filter(([key]) => query.toLocaleLowerCase().includes(key))
-                .map(([, article]) => article)
-            return { articles: hits.length ? hits : ["No exact match found- use your judgement"] }
-        }
+        })
     }),
 
     classifyItem: tool({
@@ -31,7 +25,6 @@ export const tools = {
             itemId: z.string(),
             category: z.enum(["billing", "technical", "sales", "other"]),
         }),
-        execute: async ({ itemId, category }) => ({ ok: true, itemId, category }),
     }),
 
     draftReply: tool({
@@ -40,7 +33,6 @@ export const tools = {
             itemId: z.string(),
             message: z.string(),
         }),
-        execute: async ({ itemId }) => ({ ok: true, draftId: `draft-${itemId}` }),
     }),
 
     sendReply: tool({
@@ -49,7 +41,24 @@ export const tools = {
             itemId: z.string(),
             draftId: z.string(),
         }),
-        // DANGEROUS: an irreversible side effect with zero confirmation.
-        execute: async ({ itemId, draftId }) => ({ sent: true, itemId, draftId }),
     }),
+}
+
+export async function runTool(name: string, args: Record<string, unknown>) {
+    switch (name) {
+        case "searchKnowledgeBase":
+            const query = String(args.query ?? "").toLowerCase()
+            const hits = Object.entries(KNOWLEDGE_BASE)
+                .filter(([key]) => query.includes(key))
+                .map(([, article]) => article)
+            return { articles: hits.length ? hits : ["No exact match found- use your judgement"] }
+        case "classifyItem":
+            return { ok: true, itemId: args.itemId, category: args.category }
+        case "draftReply":
+            return { ok: true, draftId: `draft-${args.itemId}` }
+        case "sendReply":
+            return { sent: true, itemId: args.itemId, draftId: args.draftId }
+        default:
+            throw new Error(`Unknown tool: ${name}`);
+    }
 }
