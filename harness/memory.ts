@@ -1,7 +1,6 @@
 import { openai } from "@ai-sdk/openai";
 import { generateText, type ModelMessage } from "ai";
 import { LLM_MODEL } from "../config";
-import { SYSTEM_PROMPT } from "./system-prompt";
 
 export const MAX_CONTEXT_TOKENS = 500
 export const KEEP_CONTEXT_TOKENS = 200
@@ -43,6 +42,7 @@ export async function summarize(oldTurns: ModelMessage[][], priorSummary: string
 }
 
 export function buildContext(
+    systemPrompt: string,
     task: string,
     summary: string,
     turns: ModelMessage[][]
@@ -50,7 +50,7 @@ export function buildContext(
     const context: ModelMessage[] = [
         {
             role: "system",
-            content: SYSTEM_PROMPT
+            content: systemPrompt
         },
         {
             role: "user",

@@ -14,7 +14,7 @@ function App() {
           send({
             type: "submit_task",
             input: `Handle these work items:
-tem-1 (billing): Customer cus_88121 says they were charged twice. Find the duplicate charge and tell them the exact refund amount (in dollars).
+Customer cus_88121 was charged twice and wants the duplicate refunded.
 `,
             mode: "default",
           });
