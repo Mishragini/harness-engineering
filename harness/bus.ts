@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import type { AgentEvent, Emit, EventInput } from "@shared/event"
+import type { AgentEvent, EventInput } from "@shared/event"
 import { db } from "./db"
 import { eventLog } from "./db/schema"
 

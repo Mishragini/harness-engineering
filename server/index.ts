@@ -5,6 +5,7 @@ import type { ClientMessage } from "@shared/event"
 import { DBOS } from "@dbos-inc/dbos-sdk"
 import { history, subscribe } from "../harness/bus"
 import { runAgentWorkflow } from "../harness/runtime"
+import { runSupervisorWorkflow } from "../harness/supervisor"
 
 async function main() {
     DBOS.setConfig({
@@ -39,7 +40,8 @@ async function main() {
             }
 
             if (message.type === "submit_task") {
-                await DBOS.startWorkflow(runAgentWorkflow)(message.input)
+                const workflow = message.mode === "supervised" ? runSupervisorWorkflow : runAgentWorkflow
+                await DBOS.startWorkflow(workflow)(message.input)
 
             }
         })
