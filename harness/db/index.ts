@@ -9,3 +9,6 @@ if (!connectionString) {
 const client = postgres(connectionString, { max: 5 })
 export const db = drizzle(client)
 
+export async function clearEventLog() {
+    await client`TRUNCATE event_log`
+}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentEvent, ClientMessage } from "@shared/event";
 
+const BACKEND_URL = `http://${location.hostname}:8787`;
 const WS_URL = `ws://${location.hostname}:8787/ws`;
 
 export function useHarnessSocket() {
@@ -27,5 +28,11 @@ export function useHarnessSocket() {
         socketRef.current?.send(JSON.stringify(message));
     }, []);
 
-    return { connected, events, send }
+    const clearEvents = useCallback(async () => {
+        const res = await fetch(`${BACKEND_URL}/api/clear`, { method: "POST" });
+        if (!res.ok) throw new Error("clear failed");
+        setEvents([]);
+    }, []);
+
+    return { connected, events, send, clearEvents };
 }

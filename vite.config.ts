@@ -55,7 +55,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      "@": fileURLToPath(new URL("./web", import.meta.url)),
+      "@": fileURLToPath(new URL("./web/src", import.meta.url)),
       "@shared": fileURLToPath(new URL("./shared", import.meta.url))
     }
   },

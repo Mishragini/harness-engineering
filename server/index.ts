@@ -6,6 +6,8 @@ import { DBOS } from "@dbos-inc/dbos-sdk"
 import { history, subscribe } from "../harness/bus"
 import { runAgentWorkflow } from "../harness/runtime"
 import { runSupervisorWorkflow } from "../harness/supervisor"
+import { clearEventLog } from "../harness/db"
+import cors from "cors"
 
 async function main() {
     DBOS.setConfig({
@@ -16,9 +18,16 @@ async function main() {
 
 
     const app = express()
+    app.use(cors({ origin: "*" }))
     app.get("/health", (_req, res) => {
         res.json({ ok: true })
     })
+
+    app.post("/api/clear", async (_req, res) => {
+        await clearEventLog()
+        res.json({ ok: true })
+    })
+
     const server = createServer(app)
     const wss = new WebSocketServer({ server, path: "/ws" })
 
@@ -40,7 +49,9 @@ async function main() {
             }
 
             if (message.type === "submit_task") {
+                console.log("message...", message)
                 const workflow = message.mode === "supervised" ? runSupervisorWorkflow : runAgentWorkflow
+                console.log("workflow..", workflow)
                 await DBOS.startWorkflow(workflow)(message.input)
 
             }
