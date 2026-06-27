@@ -154,12 +154,11 @@ export async function agentWorkflow(input: string) {
                     { name: `handoff-${tc.toolCallId}` }
                 )
                 currentAgent = agents[to] ?? currentAgent
-                turnMessages.push(
-                    toolResultMessage(tc, {
-                        ok: true,
-                        message: `You are now the ${to} specialist. Take over and FINISH the task by calling the tools you need — do the work, don't just acknowledge the handoff.`,
-                    }),
-                );
+                turnMessages.push(toolResultMessage(tc, { ok: true, handedOffTo: to }))
+                turnMessages.push({
+                    role: "user",
+                    content: `You are now the ${to} agent. ${reason}. Please complete the task.`
+                })
                 break
             }
             else if (NEEDS_APROVAL.has(tc.toolName)) {
