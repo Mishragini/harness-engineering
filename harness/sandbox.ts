@@ -3,7 +3,7 @@ import vm from "node:vm"
 type SandboxApi = Record<string, unknown>
 
 async function withTimeout<T>(pending: Promise<T>, ms: number) {
-    Promise.race([
+    return Promise.race([
         pending,
         new Promise((_, reject) => setTimeout(() => reject(new Error(`execution timed out after ${ms}ms`)), ms))
     ])

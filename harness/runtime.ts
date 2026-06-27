@@ -9,6 +9,8 @@ import { buildContext, estimateTokens, KEEP_CONTEXT_TOKENS, MAX_CONTEXT_TOKENS, 
 import { agents, triageAgent } from "./agents";
 
 const MAX_STEPS = 10
+const NEEDS_APROVAL = new Set(["issueRefund"])
+const APPROVAL_TIMEOUT_S = 86_400
 
 type ToolCall = {
     toolCallId: string,
@@ -118,6 +120,7 @@ export async function agentWorkflow(input: string) {
         }
 
         const context = buildContext(currentAgent.systemPrompt, input, summary, turns)
+        console.log("currentAgent...", currentAgent)
         const turn = await DBOS.runStep(() => modelTurn(currentAgent.tools, workflowId, context), { name: `model-${step}` })
 
 
@@ -139,7 +142,7 @@ export async function agentWorkflow(input: string) {
         for (const tc of turn.toolCalls) {
             if (tc.toolName === "handoff") {
                 const { to, reason } = tc.input as { to: string, reason: string }
-                DBOS.runStep(
+                await DBOS.runStep(
                     () =>
                         emit({
                             type: EventType.AgentHandoff,
@@ -148,11 +151,57 @@ export async function agentWorkflow(input: string) {
                             from: currentAgent.name,
                             reason: String(reason)
                         }),
-                    { name: `handoff-${step}` }
+                    { name: `handoff-${tc.toolCallId}` }
                 )
                 currentAgent = agents[to] ?? currentAgent
-                turnMessages.push(toolResultMessage(tc, { ok: true, handedOffTo: to }))
-            } else {
+                turnMessages.push(
+                    toolResultMessage(tc, {
+                        ok: true,
+                        message: `You are now the ${to} specialist. Take over and FINISH the task by calling the tools you need — do the work, don't just acknowledge the handoff.`,
+                    }),
+                );
+                break
+            }
+            else if (NEEDS_APROVAL.has(tc.toolName)) {
+                await DBOS.runStep(
+                    () => emit({
+                        type: EventType.ApprovalRequested,
+                        workflowId,
+                        toolCallId: tc.toolCallId,
+                        action: tc.toolName,
+                        args: tc.input
+                    }),
+                    { name: `approval-req-${tc.toolCallId}` },
+
+                )
+
+                const decision = await DBOS.recv<{ approved: boolean }>("approval", APPROVAL_TIMEOUT_S)
+                const approved = decision?.approved ?? false
+
+                await DBOS.runStep(
+                    () =>
+                        emit({ type: EventType.ApprovalResolved, workflowId, toolCallId: tc.toolCallId, approved }),
+                    { name: `approval-res-${tc.toolCallId}` },
+                );
+
+
+                if (approved) {
+                    const output = await DBOS.runStep(() => toolStep(tc, workflowId), {
+                        name: `tool-${tc.toolCallId}`,
+                    });
+                    turnMessages.push(toolResultMessage(tc, output as JSONValue));
+                } else {
+                    turnMessages.push(
+                        toolResultMessage(tc, {
+                            approved: false,
+                            message:
+                                "A human did NOT approve this action. Do not retry — tell the customer it needs manual review.",
+                        }),
+                    );
+                }
+
+            }
+            else {
                 const output = await DBOS.runStep(() => toolStep(tc, workflowId), { name: `tool-${tc.toolCallId}` })
                 turnMessages.push({
                     role: "tool",

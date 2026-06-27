@@ -19,6 +19,7 @@ async function main() {
 
     const app = express()
     app.use(cors({ origin: "*" }))
+    app.use(express.json())
     app.get("/health", (_req, res) => {
         res.json({ ok: true })
     })
@@ -27,6 +28,13 @@ async function main() {
         await clearEventLog()
         res.json({ ok: true })
     })
+
+    app.post("/api/approve/:workflowId", async (req, res) => {
+        const approved = Boolean(req.body?.approved);
+        await DBOS.send(req.params.workflowId, { approved }, "approval");
+        res.json({ ok: true });
+    });
+
 
     const server = createServer(app)
     const wss = new WebSocketServer({ server, path: "/ws" })
